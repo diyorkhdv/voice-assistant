@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e1530"/><stop offset="1" stop-color="#0a0f22"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#6c8cff"/>
+    </marker>
+    <style>
+      .box{fill:#161d38;stroke:#2a3358;stroke-width:1.5;rx:12}
+      .ai{fill:#1b2447;stroke:#6c8cff;stroke-width:1.5}
+      .db{fill:#15233f;stroke:#34d399;stroke-width:1.5}
+      .t{fill:#e8ecf8;font-size:14px;font-weight:600}
+      .s{fill:#94a0c4;font-size:11px}
+      .lbl{fill:#6c8cff;font-size:12px;font-weight:700}
+      .lbl2{fill:#34d399;font-size:12px;font-weight:700}
+      .line{stroke:#6c8cff;stroke-width:2;fill:none;marker-end:url(#arrow)}
+      .title{fill:#fff;font-size:20px;font-weight:700}
+      .badge{fill:#94a0c4;font-size:11px}
+    </style>
+  </defs>
+
+  <rect width="980" height="620" fill="url(#bg)"/>
+  <text x="40" y="44" class="title">Voice Intent &amp; Banking Assistant — Architecture</text>
+  <text x="40" y="66" class="badge">FastAPI · async pipeline · offline Whisper (local STT) · OpenAI GPT + TTS · SQLAlchemy · mock fallback</text>
+
+  <!-- V1 row -->
+  <text x="40" y="120" class="lbl">V1 · POST /api/v1/voice-intent</text>
+  <g>
+    <rect class="box" x="40" y="135" width="150" height="64" rx="12"/>
+    <text x="58" y="163" class="t">🎙️ Audio in</text>
+    <text x="58" y="183" class="s">.wav / .mp3 upload</text>
+
+    <rect class="ai" x="230" y="135" width="150" height="64" rx="12"/>
+    <text x="248" y="163" class="t">👂 STT</text>
+    <text x="248" y="183" class="s">faster-whisper (local)</text>
+
+    <rect class="ai" x="420" y="135" width="170" height="64" rx="12"/>
+    <text x="438" y="163" class="t">🧠 LLM intent</text>
+    <text x="438" y="183" class="s">Query/Action/SmallTalk</text>
+
+    <rect class="box" x="630" y="135" width="150" height="64" rx="12"/>
+    <text x="648" y="159" class="t">📝 Confirm</text>
+    <text x="648" y="179" class="s">"categorized as ..."</text>
+
+    <rect class="ai" x="820" y="135" width="130" height="64" rx="12"/>
+    <text x="838" y="163" class="t">👄 TTS</text>
+    <text x="838" y="183" class="s">mp3 (Base64)</text>
+
+    <line class="line" x1="190" y1="167" x2="228" y2="167"/>
+    <line class="line" x1="380" y1="167" x2="418" y2="167"/>
+    <line class="line" x1="590" y1="167" x2="628" y2="167"/>
+    <line class="line" x1="780" y1="167" x2="818" y2="167"/>
+  </g>
+
+  <!-- divider -->
+  <line x1="40" y1="245" x2="940" y2="245" stroke="#2a3358" stroke-width="1" stroke-dasharray="4 4"/>
+
+  <!-- V2 row -->
+  <text x="40" y="290" class="lbl2">V2 · POST /api/v2/banking-assistant  (user_id + audio)</text>
+  <g>
+    <rect class="box" x="40" y="305" width="140" height="64" rx="12"/>
+    <text x="58" y="333" class="t">🎙️ Audio + user_id</text>
+    <text x="58" y="353" class="s">multipart form</text>
+
+    <rect class="ai" x="215" y="305" width="130" height="64" rx="12"/>
+    <text x="233" y="333" class="t">👂 STT</text>
+    <text x="233" y="353" class="s">faster-whisper (local)</text>
+
+    <rect class="ai" x="380" y="305" width="170" height="64" rx="12"/>
+    <text x="398" y="329" class="t">🧠 LLM router</text>
+    <text x="398" y="349" class="s">balance / transactions</text>
+
+    <rect class="db" x="585" y="305" width="170" height="64" rx="12"/>
+    <text x="603" y="329" class="t">🗄️ Repository</text>
+    <text x="603" y="349" class="s">parameterized ORM</text>
+
+    <line class="line" x1="180" y1="337" x2="213" y2="337"/>
+    <line class="line" x1="345" y1="337" x2="378" y2="337"/>
+    <line class="line" x1="550" y1="337" x2="583" y2="337"/>
+  </g>
+
+  <!-- DB + synthesis second line -->
+  <g>
+    <rect class="db" x="585" y="410" width="170" height="58" rx="12"/>
+    <text x="603" y="434" class="t">PostgreSQL / SQLite</text>
+    <text x="603" y="453" class="s">accounts · transactions</text>
+
+    <rect class="ai" x="380" y="410" width="170" height="58" rx="12"/>
+    <text x="398" y="434" class="t">🧠 NL synthesis</text>
+    <text x="398" y="453" class="s">grounded in DB only</text>
+
+    <rect class="ai" x="215" y="410" width="130" height="58" rx="12"/>
+    <text x="233" y="438" class="t">👄 TTS</text>
+    <text x="233" y="457" class="s">mp3 (Base64)</text>
+
+    <rect class="box" x="40" y="410" width="140" height="58" rx="12"/>
+    <text x="58" y="434" class="t">📦 JSON reply</text>
+    <text x="58" y="453" class="s">text + audio</text>
+
+    <!-- arrows: DB up->repo, repo down to db, db -> synth -> tts -> json -->
+    <line class="line" x1="670" y1="408" x2="670" y2="372"/>
+    <line class="line" x1="585" y1="439" x2="552" y2="439"/>
+    <line class="line" x1="380" y1="439" x2="347" y2="439"/>
+    <line class="line" x1="215" y1="439" x2="182" y2="439"/>
+  </g>
+
+  <!-- safety callout -->
+  <rect x="585" y="500" width="355" height="86" rx="12" fill="#142b22" stroke="#34d399" stroke-width="1.5"/>
+  <text x="603" y="525" class="t">🔒 SQL-safety by design</text>
+  <text x="603" y="546" class="s">The LLM never writes SQL — it only picks an intent label.</text>
+  <text x="603" y="563" class="s">Data is fetched with parameterized ORM queries; user_id is</text>
+  <text x="603" y="580" class="s">integer-bound. Synthesis uses only DB numbers (no hallucinated values).</text>
+
+  <rect x="40" y="500" width="515" height="86" rx="12" fill="#16203f" stroke="#6c8cff" stroke-width="1.5"/>
+  <text x="58" y="525" class="t">⚡ Latency &amp; resilience</text>
+  <text x="58" y="546" class="s">Fully async I/O (STT/LLM/TTS) keeps the event loop free under load.</text>
+  <text x="58" y="563" class="s">Provider abstraction with a deterministic MOCK fallback: the service</text>
+  <text x="58" y="580" class="s">boots, the UI works, and tests pass with no OpenAI key.</text>
+</svg>

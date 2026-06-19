@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voice Intent &amp; Banking Assistant</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#141b32; --panel2:#1b2444; --line:#2a3358;
+    --text:#e8ecf8; --muted:#94a0c4; --accent:#6c8cff; --accent2:#34d399;
+    --warn:#fbbf24; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 20% -10%,#1a2347 0,var(--bg) 60%);color:var(--text);min-height:100vh}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 20px 80px}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:.2px}
+  .sub{color:var(--muted);margin:0 0 28px;font-size:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{flex:1;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);
+    color:var(--muted);cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .tab.active{color:#fff;border-color:var(--accent);background:linear-gradient(180deg,#243056,#1a2344);
+    box-shadow:0 0 0 1px var(--accent) inset}
+  .tab small{display:block;font-weight:400;font-size:11px;opacity:.8;margin-top:2px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px}
+  label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+  input[type=number],input[type=text]{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);font-size:14px;outline:none}
+  input:focus{border-color:var(--accent)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:160px}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  button{border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+  .primary{background:linear-gradient(180deg,var(--accent),#5176f0);color:#fff}
+  .primary:disabled{opacity:.5;cursor:not-allowed}
+  .ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .rec{background:#3a1530;color:#ff9bc4;border:1px solid #6d2247}
+  .rec.on{background:#e11d6b;color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+  .file-name{font-size:12px;color:var(--accent2);margin-top:8px;min-height:16px}
+  .result{display:none}
+  .result.show{display:block}
+  .badge{display:inline-block;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
+  .b-query{background:#16324f;color:#7cc4ff}.b-action{background:#3a2a12;color:#fcd34d}
+  .b-smalltalk{background:#173524;color:#6ee7b7}.b-balance{background:#16324f;color:#7cc4ff}
+  .b-transactions{background:#2a1d3f;color:#c4a8ff}.b-unknown{background:#3a1c1c;color:#fca5a5}
+  .kv{margin:14px 0}.kv .k{font-size:12px;color:var(--muted)}.kv .v{font-size:16px;margin-top:2px}
+  .answer{font-size:18px;line-height:1.5;margin:6px 0 2px}
+  audio{width:100%;margin-top:14px}
+  .meta{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .pill{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);padding:4px 10px;border-radius:999px}
+  .err{color:#fca5a5;font-size:14px;margin-top:12px}
+  .mock-note{font-size:12px;background:#2a2410;border:1px solid #5a4a18;color:var(--warn);padding:10px 12px;border-radius:10px;margin-bottom:16px;display:none}
+  .mock-note.show{display:block}
+  pre{background:#0c1124;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);overflow:auto;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ Voice Intent &amp; Banking Assistant</h1>
+  <p class="sub">Speak or upload audio → transcription → intent → spoken reply. V1 classifies intent; V2 answers from your account data.</p>
+
+  <div id="mockNote" class="mock-note">⚙️ Running in <b>mock mode</b> (no OpenAI key). Use the “Spoken text (demo)” field to drive the pipeline.</div>
+
+  <div class="tabs">
+    <div class="tab active" data-mode="v1" onclick="setMode('v1')">V1 · Voice Intent<small>Query / Action / SmallTalk</small></div>
+    <div class="tab" data-mode="v2" onclick="setMode('v2')">V2 · Banking Assistant<small>Balance / Transactions</small></div>
+  </div>
+
+  <div class="card">
+    <div id="v2fields" class="row" style="display:none;margin-bottom:14px">
+      <div>
+        <label>User ID</label>
+        <input type="number" id="userId" value="1" min="1" />
+      </div>
+    </div>
+
+    <label>Spoken text (demo) — used as the transcript in mock mode</label>
+    <input type="text" id="demoText" placeholder='e.g. "How much money do I have?"' />
+
+    <div class="btns" style="margin-top:14px">
+      <button class="rec" id="recBtn" onclick="toggleRec()">● Record</button>
+      <button class="ghost" onclick="document.getElementById('fileInput').click()">📁 Upload audio</button>
+      <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.webm" style="display:none" onchange="onFile(this)" />
+      <button class="primary" id="sendBtn" onclick="send()">Send →</button>
+    </div>
+    <div class="file-name" id="fileName"></div>
+    <div class="hint">Tip: in mock mode no real audio is needed — just type the spoken text and click <b>Send</b>. With an OpenAI key, recording/upload runs real Whisper + GPT + TTS.</div>
+  </div>
+
+  <div class="card result" id="result">
+    <div id="badgeWrap"></div>
+    <div class="kv"><div class="k">Transcript</div><div class="v" id="rTranscript">—</div></div>
+    <div class="kv"><div class="k" id="answerLabel">Reply</div><div class="answer" id="rAnswer">—</div></div>
+    <audio id="player" controls></audio>
+    <div class="meta">
+      <span class="pill" id="rLatency">—</span>
+      <span class="pill" id="rMock">—</span>
+      <span class="pill" id="rEndpoint">—</span>
+    </div>
+    <pre id="rData" style="display:none"></pre>
+    <div class="err" id="rErr"></div>
+  </div>
+</div>
+
+<script>
+let mode = "v1";
+let mediaRecorder = null, chunks = [], recording = false, pickedFile = null;
+
+function setMode(m){
+  mode = m;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.mode===m));
+  document.getElementById("v2fields").style.display = m==="v2" ? "flex" : "none";
+  document.getElementById("demoText").placeholder = m==="v2"
+    ? 'e.g. "Where did I spend money yesterday?"'
+    : 'e.g. "Set an alarm for 7am"';
+}
+
+function onFile(input){
+  pickedFile = input.files[0] || null;
+  document.getElementById("fileName").textContent = pickedFile ? "Selected: " + pickedFile.name : "";
+}
+
+async function toggleRec(){
+  const btn = document.getElementById("recBtn");
+  if(recording){ mediaRecorder.stop(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder = new MediaRecorder(stream);
+    chunks = [];
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      pickedFile = new File(chunks, "recording.webm", {type:"audio/webm"});
+      document.getElementById("fileName").textContent = "Recorded: " + (chunks.length?"clip ready":"empty");
+      stream.getTracks().forEach(t=>t.stop());
+      btn.classList.remove("on"); btn.textContent="● Record"; recording=false;
+      document.getElementById("sendBtn").disabled = false;   // re-enable after recording
+    };
+    mediaRecorder.start();
+    recording = true; btn.classList.add("on"); btn.textContent="■ Stop";
+    document.getElementById("sendBtn").disabled = true;      // block Send while recording
+  }catch(e){ alert("Microphone not available: " + e.message); }
+}
+
+// In mock mode the server reads the transcript from the filename after `__transcript__`.
+function buildFile(){
+  const demo = document.getElementById("demoText").value.trim();
+  if(pickedFile && !demo) return pickedFile;
+  // synth a tiny placeholder file carrying the demo transcript in its name
+  const safe = demo.replace(/[^\w ?]/g,"").replace(/ /g,"_");
+  const name = `demo__transcript__${safe || "Hello_there"}.wav`;
+  const body = pickedFile ? pickedFile : new Blob([new Uint8Array([82,73,70,70])], {type:"audio/wav"});
+  return new File([body], name, {type: pickedFile ? pickedFile.type : "audio/wav"});
+}
+
+async function send(){
+  const btn = document.getElementById("sendBtn");
+  const res = document.getElementById("result");
+  const err = document.getElementById("rErr");
+  err.textContent=""; btn.disabled=true; btn.textContent="Working…";
+
+  const fd = new FormData();
+  fd.append("file", buildFile());
+  let url = "/api/v1/voice-intent";
+  if(mode==="v2"){ url="/api/v2/banking-assistant"; fd.append("user_id", document.getElementById("userId").value); }
+
+  try{
+    const r = await fetch(url, {method:"POST", body:fd});
+    const raw = await r.text();              // read once, parse defensively
+    let j = null;
+    try { j = raw ? JSON.parse(raw) : null; } catch(_) { /* non-JSON body */ }
+
+    if(!r.ok){
+      const msg = (j && j.detail) ? (typeof j.detail==="string" ? j.detail : JSON.stringify(j.detail))
+                                  : (raw || ("HTTP " + r.status));
+      throw new Error("HTTP " + r.status + " — " + msg);
+    }
+    if(!j) throw new Error("Server returned a non-JSON response: " + raw.slice(0,200));
+    render(j);
+  }catch(e){
+    res.classList.add("show"); err.textContent = "Error: " + e.message;
+  }finally{
+    btn.disabled=false; btn.textContent="Send →";
+  }
+}
+
+function render(j){
+  const res = document.getElementById("result");
+  res.classList.add("show");
+  document.getElementById("rTranscript").textContent = j.transcript || "—";
+
+  const intent = j.intent;
+  document.getElementById("badgeWrap").innerHTML =
+    `<span class="badge b-${intent.toLowerCase()}">${intent}</span>`;
+
+  if(mode==="v2"){
+    document.getElementById("answerLabel").textContent = "Answer";
+    document.getElementById("rAnswer").textContent = j.answer_text;
+    const d = document.getElementById("rData");
+    d.style.display="block"; d.textContent = JSON.stringify(j.data, null, 2);
+    document.getElementById("rEndpoint").textContent = "POST /api/v2/banking-assistant";
+  }else{
+    document.getElementById("answerLabel").textContent = "Reply";
+    document.getElementById("rAnswer").textContent = j.reply_text;
+    document.getElementById("rData").style.display="none";
+    document.getElementById("rEndpoint").textContent = "POST /api/v1/voice-intent";
+  }
+
+  document.getElementById("rLatency").textContent = "⏱ " + j.latency_ms + " ms";
+  document.getElementById("rMock").textContent = j.mock ? "mock" : "live OpenAI";
+
+  const player = document.getElementById("player");
+  if(j.audio_base64){
+    player.src = "data:audio/mp3;base64," + j.audio_base64;
+    player.style.display = "block";
+  } else {
+    player.removeAttribute("src");
+    player.style.display = "none";
+  }
+}
+
+// detect mock mode for the banner
+fetch("/health").then(r=>r.json()).then(h=>{
+  if(h.mock_mode) document.getElementById("mockNote").classList.add("show");
+});
+</script>
+</body>
+</html>

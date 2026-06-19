@@ -1,0 +1,20 @@
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# --- STT: OFFLINE Whisper (local, runs on CPU, no API) ---
+faster-whisper>=1.0.0,<2.0.0
+
+# --- AI providers (OpenAI: GPT LLM + TTS) ---
+openai==1.59.6
+
+# --- Database (SQLAlchemy ORM, parameterized queries) ---
+SQLAlchemy==2.0.36
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.25.2
+httpx==0.28.1

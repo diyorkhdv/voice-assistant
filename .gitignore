@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Env & secrets
+.env
+
+# Databases / generated audio
+*.db
+*.db-journal
+*.sqlite3
+pytest-cache-files-*
+*.wav
+*.mp3
+!tests/fixtures/*.wav
+!tests/fixtures/*.mp3
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

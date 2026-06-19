@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Leave OPENAI_API_KEY empty to run in mock mode, or pass it through:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - MOCK_MODE=${MOCK_MODE:-false}
+      - DATABASE_URL=sqlite:////data/banking.db
+    volumes:
+      - bankingdata:/data
+    restart: unless-stopped
+
+volumes:
+  bankingdata:
