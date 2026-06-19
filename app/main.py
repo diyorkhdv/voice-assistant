@@ -138,13 +138,37 @@ async def health() -> dict:
     return {"status": "ok", "mock_mode": settings.use_mock, "version": app.version}
 
 
+# Approx on-disk download size (MB) per faster-whisper model, for a progress %.
+_WHISPER_MB = {"tiny": 75, "base": 145, "small": 488, "medium": 1530, "large-v3": 3090}
+
+
+def _stt_download_progress() -> tuple[float, float]:
+    """(downloaded_mb, total_mb) by measuring the model's HF cache blobs dir.
+    HuggingFace exposes no progress callback, so we read bytes-on-disk (partial
+    `.incomplete` files included) against the model's known size."""
+    total_mb = float(_WHISPER_MB.get(settings.whisper_model, 145))
+    try:
+        from huggingface_hub.constants import HF_HUB_CACHE
+        blobs = Path(HF_HUB_CACHE) / f"models--Systran--faster-whisper-{settings.whisper_model}" / "blobs"
+        if not blobs.exists():
+            return 0.0, total_mb
+        got = sum(f.stat().st_size for f in blobs.iterdir() if f.is_file())
+        return round(got / 1e6, 1), total_mb
+    except Exception:
+        return 0.0, total_mb
+
+
 @app.get("/api/status", tags=["meta"])
 async def status() -> dict:
-    """STT model load state (+ live elapsed time) and LLM/TTS mock flag.
-    The UI polls this to show a Whisper loading indicator and gate the buttons."""
+    """STT model load state (+ live elapsed time, + download progress) and the
+    LLM/TTS mock flag. The UI polls this to show a Whisper loading indicator
+    and gate the buttons."""
     s = dict(STT_STATUS)
-    if s["state"] == "loading" and s.get("_started"):
-        s["elapsed_s"] = round(time.perf_counter() - s["_started"], 1)
+    if s["state"] == "loading":
+        if s.get("_started"):
+            s["elapsed_s"] = round(time.perf_counter() - s["_started"], 1)
+        got, total = _stt_download_progress()
+        s["downloaded_mb"], s["total_mb"] = got, total
     s.pop("_started", None)
     return {"stt": s, "mock_mode": settings.use_mock}
 

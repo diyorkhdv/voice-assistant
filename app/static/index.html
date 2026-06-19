@@ -59,6 +59,7 @@
   .bar{margin-top:10px;height:6px;border-radius:6px;background:#0c1124;overflow:hidden;position:relative}
   .bar>i{position:absolute;left:-40%;width:40%;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:slide 1.1s infinite}
   @keyframes slide{0%{left:-40%}100%{left:100%}}
+  .bar.det>i{position:absolute;left:0;animation:none;transition:width .5s ease}
   pre{background:#0c1124;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);overflow:auto;margin-top:12px}
 </style>
 </head>
@@ -246,9 +247,18 @@ async function pollStatus(){
 
     if(st === "loading"){
       note.classList.add("show"); note.classList.remove("err"); bar.style.display="block";
-      txt.textContent = `⏳ Loading offline Whisper model '${j.stt.model}' — first run downloads ~140 MB (${j.stt.elapsed_s||0}s)…`;
+      const fill = bar.querySelector("i");
+      const d = j.stt.downloaded_mb, t = j.stt.total_mb, sec = j.stt.elapsed_s||0;
+      if(t && d >= 0){
+        const pct = Math.min(100, Math.round(d / t * 100));
+        bar.classList.add("det"); fill.style.width = pct + "%";
+        txt.textContent = `⏳ Downloading Whisper '${j.stt.model}': ${d} / ${t} MB (${pct}%) · ${sec}s`;
+      } else {
+        bar.classList.remove("det"); fill.style.width = "";
+        txt.textContent = `⏳ Loading Whisper '${j.stt.model}'… (${sec}s)`;
+      }
       rec.disabled = true; send.disabled = true;
-      setTimeout(pollStatus, 1500);          // keep polling while it loads
+      setTimeout(pollStatus, 1000);          // keep polling while it loads
       return;
     }
 
