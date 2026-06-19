@@ -10,6 +10,7 @@ what keeps voice latency low when many requests arrive at once.
 """
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import logging
 import time
@@ -46,24 +47,38 @@ REFERENCE_TODAY = dt.date(2026, 6, 19)
 ALLOWED_TYPES = {"audio/wav", "audio/x-wav", "audio/wave", "audio/mpeg", "audio/mp3"}
 ALLOWED_EXT = {".wav", ".mp3", ".mpeg", ".m4a", ".webm", ".ogg"}
 
+# Live STT model status, surfaced to the UI via GET /api/status so the page can
+# show a loading indicator while the offline Whisper model downloads/loads.
+#   state: "mock" | "loading" | "ready" | "error" | "idle"
+STT_STATUS: dict = {"state": "idle", "model": settings.whisper_model, "detail": "", "elapsed_s": 0.0}
+
+
+async def _load_stt_model() -> None:
+    """Load the Whisper model in the background (off the event loop) so the
+    server can serve the UI immediately and report progress via /api/status."""
+    started = time.perf_counter()
+    STT_STATUS.update(state="loading", detail="Downloading / loading model…", _started=started)
+    log.info("Loading offline Whisper model '%s' (first run downloads it)…", settings.whisper_model)
+    try:
+        await asyncio.to_thread(stt._get_model)
+        STT_STATUS.update(state="ready", detail="", elapsed_s=round(time.perf_counter() - started, 1))
+        log.info("Whisper model ready (%.1fs).", STT_STATUS["elapsed_s"])
+    except Exception as exc:  # never crash startup
+        STT_STATUS.update(state="error", detail=str(exc))
+        log.warning("Whisper load failed (%s). Falls back to stub per request.", exc)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed()  # ensure DB exists and demo data is present
 
-    # Warm up the offline Whisper model at startup so the FIRST request is fast.
-    # Uvicorn only reports "Application startup complete" (and starts serving)
-    # AFTER this finishes — i.e. the site goes live only once the model is ready.
-    # HuggingFace prints a download progress bar to the console on first run.
-    if settings.preload_stt and not settings.stt_use_mock:
-        log.info("Loading offline Whisper model '%s' (first run downloads it)…",
-                 settings.whisper_model)
-        try:
-            stt._get_model()
-            log.info("Whisper model ready — serving on http://localhost:8000")
-        except Exception as exc:  # don't block startup if the download fails
-            log.warning("Whisper preload failed (%s). Will retry per request / "
-                        "fall back to stub.", exc)
+    if settings.stt_use_mock:
+        STT_STATUS["state"] = "mock"
+    elif settings.preload_stt:
+        # Non-blocking: kick off the load and let the UI poll /api/status.
+        asyncio.create_task(_load_stt_model())
+    else:
+        STT_STATUS["state"] = "idle"  # will lazy-load on first request
     yield
 
 
@@ -121,6 +136,17 @@ def _wants_yesterday(text: str) -> bool:
 @app.get("/health", tags=["meta"])
 async def health() -> dict:
     return {"status": "ok", "mock_mode": settings.use_mock, "version": app.version}
+
+
+@app.get("/api/status", tags=["meta"])
+async def status() -> dict:
+    """STT model load state (+ live elapsed time) and LLM/TTS mock flag.
+    The UI polls this to show a Whisper loading indicator and gate the buttons."""
+    s = dict(STT_STATUS)
+    if s["state"] == "loading" and s.get("_started"):
+        s["elapsed_s"] = round(time.perf_counter() - s["_started"], 1)
+    s.pop("_started", None)
+    return {"stt": s, "mock_mode": settings.use_mock}
 
 
 if STATIC_DIR.exists():

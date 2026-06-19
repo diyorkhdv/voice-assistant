@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
+import threading
 from urllib.parse import unquote
 
 from app.config import get_settings
@@ -25,6 +26,7 @@ from app.config import get_settings
 class SpeechToText:
     # Class-level cache: the (heavy) model is loaded once and shared.
     _model = None
+    _lock = threading.Lock()  # guards model creation against concurrent loads
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -32,13 +34,15 @@ class SpeechToText:
     # ------------------------------------------------------------------ #
     def _get_model(self):
         if SpeechToText._model is None:
-            from faster_whisper import WhisperModel  # imported lazily
+            with SpeechToText._lock:
+                if SpeechToText._model is None:  # double-checked locking
+                    from faster_whisper import WhisperModel  # imported lazily
 
-            SpeechToText._model = WhisperModel(
-                self.settings.whisper_model,
-                device=self.settings.whisper_device,
-                compute_type=self.settings.whisper_compute_type,
-            )
+                    SpeechToText._model = WhisperModel(
+                        self.settings.whisper_model,
+                        device=self.settings.whisper_device,
+                        compute_type=self.settings.whisper_compute_type,
+                    )
         return SpeechToText._model
 
     async def transcribe(self, audio_bytes: bytes, filename: str) -> str:
