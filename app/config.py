@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # Load the model during startup (warm-up) instead of on the first request,
     # so the server only goes live once the model is downloaded & ready.
     preload_stt: bool = True
+    # Optional free HuggingFace token — lifts the anonymous download rate limit
+    # (anonymous pulls can be throttled to a crawl). Get one at hf.co/settings/tokens.
+    hf_token: str | None = None
 
     # --- Behaviour ---
     # Stub ALL providers (STT/LLM/TTS). Used by tests/CI to avoid any download

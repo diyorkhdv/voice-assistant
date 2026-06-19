@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -56,6 +57,9 @@ STT_STATUS: dict = {"state": "idle", "model": settings.whisper_model, "detail": 
 async def _load_stt_model() -> None:
     """Load the Whisper model in the background (off the event loop) so the
     server can serve the UI immediately and report progress via /api/status."""
+    # Lift the HF anonymous download rate limit if a token is configured.
+    if settings.hf_token:
+        os.environ.setdefault("HF_TOKEN", settings.hf_token)
     started = time.perf_counter()
     STT_STATUS.update(state="loading", detail="Downloading / loading model…", _started=started)
     log.info("Loading offline Whisper model '%s' (first run downloads it)…", settings.whisper_model)
